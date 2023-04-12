@@ -37,8 +37,6 @@ p = .8;
 
 idx = np.random.permutation(m)
 
-print(idx[1:round(p*m)])
-
 xtr = X.loc[idx[1:round(p*m)]]
 
 ytr = Y.loc[idx[1:round(p*m)]]
@@ -62,10 +60,22 @@ print(len(yte))
 
 # Create a random forest model
 Mdl = sklearn.ensemble.RandomForestClassifier()
-Mdl.fit(xtr, ytr)
+
+Mdl.fit(xtr, np.ravel(ytr))
 
 hte = Mdl.predict(xte)
 print(hte)
+
+yPredict = Mdl.predict(xte)
+print(yPredict)
+
+accuracy = accuracy_score(yte, yPredict)
+print(accuracy)
+
+confusionMatrix = confusion_matrix(yte, yPredict)
+ConfusionMatrixDisplay(confusion_matrix = confusionMatrix).plot()
+
+"""""
 #hte = float(hte)
 accuracy_te = statistics.mean(round(hte) == yte)
 confusion_matrix_te = sklearn.metrics.confusion_matrix(yte, round(hte))
@@ -88,6 +98,4 @@ confusion_matrix_all = sklearn.metrics.confusion_matrix(ytr, round(htr))
 cm_display_all = sklearn.metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix_all, display_labels = [False, True])
 cm_display_all.plot()
 plt.show()
-
-"""""
 """""
