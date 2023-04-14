@@ -16,18 +16,19 @@ from sklearn.tree import export_graphviz
 from IPython.display import Image
 import graphviz
 
-data = pd.read_excel('wslp_f29.xlsx', sheet_name = 0)
+data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
 
 
-X = data.loc[: , ['Depth(ft)','qc(psf)','fs(psf)','u2(psf)','log(qt/Pa)','log(Rf)','organic']] # 8 feature columns
-Y = data.loc[: , ['organic']] # Output column
+X = data.loc[:, ['Depth(ft)', 'qc(psf)', 'fs(psf)', 'u2(psf)', 'log(qt/Pa)', 'log(Rf)', 'geology', 'prec']]  # 8 feature columns
+Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
 
-PredictorNames = ["depth","qc","fs","u2","log(qt/Pa)","log(Rf)","geology","preconsolidation"]
+
+PredictorNames = ["depth", "qc", "fs", "u2", "log(qt/Pa)", "log(Rf)", "geology", "preconsolidation"]
 
 
 # Randomizing data
-p = .8;
+p = .8
 
 idx = np.random.permutation(m)
 
@@ -46,22 +47,20 @@ Mdl.fit(xtr, np.ravel(ytr))
 hte = Mdl.predict(xte)
 
 accuracy = accuracy_score(yte, hte)
-print(accuracy)
 
 confusionMatrix = confusion_matrix(yte, hte)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
-plt.show()
 
 htr = Mdl.predict(xtr)
 accuracy = accuracy_score(ytr, htr)
 
 confusionMatrix = confusion_matrix(ytr, htr)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
-plt.show()
 
 htAll = Mdl.predict(X)
 accuracy = accuracy_score(Y, htAll)
 
 confusionMatrix = confusion_matrix(Y, htAll)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
+
 plt.show()
