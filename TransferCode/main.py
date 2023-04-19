@@ -18,12 +18,46 @@ import graphviz
 
 data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
 
+newData = pd.read_excel('WSLP-101.xlsx', header=8, sheet_name=1, skiprows=[9])
+#index_col= [9, 10, 13, 15, 20, 43, 44],
+
 
 X = data.loc[:, ['Depth(ft)', 'qc(psf)', 'fs(psf)', 'u2(psf)', 'log(qt/Pa)', 'log(Rf)', 'geology', 'prec']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
 
+print(newData)
 
+depthValues = newData.iloc[:, [9]]
+print(depthValues)
+
+qcValues = newData.iloc[:, [10]]
+qcValues = qcValues * 2000
+print(qcValues)
+
+fsValues = newData.iloc[:, [13]]
+print(fsValues)
+
+u2Values = newData.iloc[:, [15]]
+print(u2Values)
+
+preConsolidationValues = newData.iloc[:, [20]]
+preConsolidationValues = preConsolidationValues * 2000
+print(preConsolidationValues)
+
+qtPaValues = newData.iloc[:, [43]]
+#qtPaValues = np.log10(qtPaValues)
+print(qtPaValues)
+
+rfValues = newData.iloc[:, [44]]
+print(rfValues)
+
+newDataFinished = depthValues
+newDataFinished = np.append(qcValues, axis=1)
+print(newDataFinished)
+
+
+'''''
 PredictorNames = ["depth", "qc", "fs", "u2", "log(qt/Pa)", "log(Rf)", "geology", "preconsolidation"]
 
 
@@ -64,3 +98,4 @@ confusionMatrix = confusion_matrix(Y, htAll)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 plt.show()
+'''''
