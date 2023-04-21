@@ -24,6 +24,15 @@ newData = pd.read_excel('WSLP-101.xlsx', header=8, sheet_name=1, skiprows=[9, 10
 goodData = newData.loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "s 'p"]]
 goodData = goodData.dropna()
 
+testAnswers = newData.loc[:, ["Classification.1"]]
+testAnswers.rename(columns={"Classification.1": "Classification"}, inplace = True)
+testAnswers = testAnswers.dropna()
+uniqueValues = pd.unique(testAnswers["Classification"].values.ravel())
+valueMapping = {uniqueValues[0]: 0, uniqueValues[1]: 1, uniqueValues[2]: 0, uniqueValues[3]: 0, uniqueValues[4]: 0, uniqueValues[5]: 0}
+testAnswers.Classification = [valueMapping[item] for item in testAnswers.Classification]
+testAnswers.replace({uniqueValues[0]: valueMapping, uniqueValues[1]: valueMapping, uniqueValues[2]: valueMapping, uniqueValues[3]: valueMapping, uniqueValues[4]: valueMapping, uniqueValues[5]: valueMapping})
+print(testAnswers)
+
 X = data.loc[:, ['Depth(ft)', 'qc(psf)', 'fs(psf)', 'u2(psf)', 'log(qt/Pa)', 'log(Rf)', 'geology', 'prec']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
@@ -73,10 +82,8 @@ print(yte)
 # Create a random forest model
 Mdl = sklearn.ensemble.RandomForestClassifier()
 Mdl.fit(xtr, np.ravel(ytr))
-Mdl.fit(xtrTest)
 
 hte = Mdl.predict(xte)
-hteTest = Mdl.predict(xteTest)
 
 accuracy = accuracy_score(yte, hte)
 
@@ -95,6 +102,9 @@ accuracy = accuracy_score(Y, htAll)
 
 confusionMatrix = confusion_matrix(Y, htAll)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
+
+
+hteTest = Mdl.predict(xteTest)
 
 #plt.show()
 '''''
