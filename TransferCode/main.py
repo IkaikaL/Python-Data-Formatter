@@ -70,10 +70,12 @@ goodDataWslp109['qt/pa'] = np.log10(goodDataWslp109['qt/pa'])
 geoValuesWslp109 = np.zeros((len(goodDataWslp109), 1))
 goodDataWslp109.insert(6, "geology", geoValuesWslp109, True)
 
+'''''
 # print dataframes
 print(goodDataWslp101)
 print(goodDataWslp108)
 print(goodDataWslp109)
+'''''
 
 # pulling organic/not organic from charts (useless now)
 testAnswers = wslp101.loc[:, ["Classification.1"]]
@@ -89,22 +91,20 @@ for i in uniqueValues:
 testAnswers.Classification = [valueMapping[item] for item in testAnswers.Classification]
 for i in uniqueValues:
     testAnswers.replace({i: valueMapping})
-print(testAnswers)
 
 dataLengthWslp101 = len(goodDataWslp101)
 dataLengthWslp108 = len(goodDataWslp108)
 dataLengthWslp109 = len(goodDataWslp109)
 
-X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'log', 'log.1', 'geology', 'prec']]  # 8 feature columns
+X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
 
 
 
 # Randomizing data
-# np.set_printoptions(suppress=True)
-# np.set_printoptions(precision=15)
-# np.random.seed(0)
+np.set_printoptions(suppress=True, precision=15)
+np.random.seed(0)
 p = .8
 
 idx = np.random.permutation(m)
@@ -112,23 +112,17 @@ idxTest = np.random.permutation(len(goodDataWslp101))
 
 
 xtr = X.loc[idx[1:round(p*m)]]
-xtrTest = goodDataWslp101.loc[idxTest[1:round(p*dataLengthWslp101)]]
 
 ytr = Y.loc[idx[1:round(p*m)]]
-#ytrTest =
 
 xte = X.loc[idx[round(p*m)+1:len(idx)-1]]
-xteTest = goodDataWslp101.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
+newDataTest = goodDataWslp101.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
 yte = Y.loc[idx[round(p*m)+1:len(idx)-1]]
-yteTest = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
+newDataTestSampleAnswers = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
-
-print(idx)
-print(xtr)
-print(ytr)
-print(xte)
-print(yte)
+print(newDataTest)
+print(newDataTestSampleAnswers)
 '''''
 '''''
 # Create a random forest model
@@ -143,7 +137,6 @@ confusionMatrix = confusion_matrix(yte, hte)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 htr = Mdl.predict(xtr)
-htrTest = Mdl.predict(xtrTest)
 accuracy = accuracy_score(ytr, htr)
 
 confusionMatrix = confusion_matrix(ytr, htr)
@@ -156,10 +149,13 @@ confusionMatrix = confusion_matrix(Y, htAll)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 
-hteTest = Mdl.predict(xteTest)
-accuracy = accuracy_score(yteTest, htrTest)
+newDataPrediction = Mdl.predict(newDataTest)
+accuracy = accuracy_score(newDataPrediction, newDataTestSampleAnswers)
 print(accuracy)
 
-#plt.show()
+confusionMatrix = confusion_matrix(newDataPrediction, newDataTestSampleAnswers)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
+
+plt.show()
 '''''
 '''''
