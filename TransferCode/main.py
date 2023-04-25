@@ -52,8 +52,9 @@ goodDataWslp101.insert(6, "geology", geoValuesWslp101, True)
 goodDataWslp108.iloc[:, [1]] *= 2000
 goodDataWslp108.iloc[:, [2]] *= 2000
 goodDataWslp108.iloc[:, [3]] *= 144
+
+goodDataWslp108['prec'] = .33 * (goodDataWslp108['qt'] * 2000 - goodDataWslp108['prec'])
 goodDataWslp108.iloc[:, [4]] /= 1.0581
-goodDataWslp108['prec'] = .33 * (5 - goodDataWslp108['qt']) * 2000 - goodDataWslp108['prec']
 
 goodDataWslp108['qt'] = np.log10(goodDataWslp108['qt'])
 goodDataWslp108['Rf'] = np.log10(goodDataWslp108['Rf'])
@@ -65,6 +66,7 @@ goodDataWslp108.insert(6, "geology", geoValuesWslp108, True)
 # formatting numbers
 goodDataWslp109.iloc[:, [1]] *= 2000
 goodDataWslp109['qt/pa'] = np.log10(goodDataWslp109['qt/pa'])
+goodDataWslp109['Rf'] = np.log10(goodDataWslp109['Rf'])
 
 # creating and inserting geology column
 geoValuesWslp109 = np.zeros((len(goodDataWslp109), 1))
@@ -76,6 +78,7 @@ print(goodDataWslp108)
 print(goodDataWslp109)
 
 # pulling organic/not organic from charts (useless now)
+'''''
 testAnswers = wslp101.loc[:, ["Classification.1"]]
 testAnswers.rename(columns={"Classification.1": "Classification"}, inplace = True)
 testAnswers = testAnswers.dropna()
@@ -90,12 +93,12 @@ testAnswers.Classification = [valueMapping[item] for item in testAnswers.Classif
 for i in uniqueValues:
     testAnswers.replace({i: valueMapping})
 print(testAnswers)
-
+'''''
 dataLengthWslp101 = len(goodDataWslp101)
 dataLengthWslp108 = len(goodDataWslp108)
 dataLengthWslp109 = len(goodDataWslp109)
 
-X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'log', 'log.1', 'geology', 'prec']]  # 8 feature columns
+X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
 
@@ -112,25 +115,16 @@ idxTest = np.random.permutation(len(goodDataWslp101))
 
 
 xtr = X.loc[idx[1:round(p*m)]]
-xtrTest = goodDataWslp101.loc[idxTest[1:round(p*dataLengthWslp101)]]
 
 ytr = Y.loc[idx[1:round(p*m)]]
-#ytrTest =
 
 xte = X.loc[idx[round(p*m)+1:len(idx)-1]]
 xteTest = goodDataWslp101.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
 yte = Y.loc[idx[round(p*m)+1:len(idx)-1]]
-yteTest = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
+#yteTest = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
 
-print(idx)
-print(xtr)
-print(ytr)
-print(xte)
-print(yte)
-'''''
-'''''
 # Create a random forest model
 Mdl = sklearn.ensemble.RandomForestClassifier()
 Mdl.fit(xtr, np.ravel(ytr))
@@ -143,7 +137,6 @@ confusionMatrix = confusion_matrix(yte, hte)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 htr = Mdl.predict(xtr)
-htrTest = Mdl.predict(xtrTest)
 accuracy = accuracy_score(ytr, htr)
 
 confusionMatrix = confusion_matrix(ytr, htr)
@@ -157,9 +150,11 @@ ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 
 hteTest = Mdl.predict(xteTest)
-accuracy = accuracy_score(yteTest, htrTest)
-print(accuracy)
+confusionMatrix = confusion_matrix(xte, hteTest)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
-#plt.show()
+print(accuracy)
+plt.show()
+
 '''''
 '''''
