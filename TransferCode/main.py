@@ -77,6 +77,7 @@ print(goodDataWslp108)
 print(goodDataWslp109)
 '''''
 
+'''''
 # pulling organic/not organic from charts (useless now)
 testAnswers = wslp101.loc[:, ["Classification.1"]]
 testAnswers.rename(columns={"Classification.1": "Classification"}, inplace = True)
@@ -91,7 +92,7 @@ for i in uniqueValues:
 testAnswers.Classification = [valueMapping[item] for item in testAnswers.Classification]
 for i in uniqueValues:
     testAnswers.replace({i: valueMapping})
-
+'''''
 dataLengthWslp101 = len(goodDataWslp101)
 dataLengthWslp108 = len(goodDataWslp108)
 dataLengthWslp109 = len(goodDataWslp109)
@@ -119,12 +120,12 @@ xte = X.loc[idx[round(p*m)+1:len(idx)-1]]
 newDataTest = goodDataWslp101.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
 yte = Y.loc[idx[round(p*m)+1:len(idx)-1]]
-newDataTestSampleAnswers = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
+#newDataTestSampleAnswers = testAnswers.loc[idxTest[round(p*dataLengthWslp101)+1:len(idxTest)-1]]
 
 print(newDataTest)
-print(newDataTestSampleAnswers)
-'''''
-'''''
+#print(newDataTestSampleAnswers)
+
+
 # Create a random forest model
 Mdl = sklearn.ensemble.RandomForestClassifier()
 Mdl.fit(xtr, np.ravel(ytr))
@@ -150,12 +151,12 @@ ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 
 newDataPrediction = Mdl.predict(newDataTest)
-accuracy = accuracy_score(newDataPrediction, newDataTestSampleAnswers)
-print(accuracy)
+#accuracy = accuracy_score(newDataPrediction, newDataTestSampleAnswers)
+print(newDataPrediction)
 
-confusionMatrix = confusion_matrix(newDataPrediction, newDataTestSampleAnswers)
+#confusionMatrix = confusion_matrix(newDataPrediction, newDataTestSampleAnswers)
 ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
-plt.show()
+#plt.show()
 '''''
 '''''
