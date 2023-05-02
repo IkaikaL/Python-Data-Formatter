@@ -35,15 +35,20 @@ for value in wslp101.keys():
 
     # Rename columns to be uniform
     individualSheetWslp101 = individualSheetWslp101.rename(columns={"s 'p": "prec"})
-    individualSheetWslp101 = individualSheetWslp101.dropna()
 
     # Add dataframe to dictionary
     wslp101DataFrames[value] = individualSheetWslp101
 
     # Get elevation values
     elevationWslp101 = wslp101[value].loc[:, ["Elevation"]]
-    elevationWslp101 = elevationWslp101.dropna()
     wslp101ElevationDataFrames[value] = elevationWslp101
+
+    # Remove any NaN values before formatting
+    nanValueIndexes = wslp101DataFrames[value][np.isnan(wslp101DataFrames[value]['prec'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp101DataFrames[value] = wslp101DataFrames[value].drop(labels=indexes, axis=0)
+            wslp101ElevationDataFrames[value] = wslp101ElevationDataFrames[value].drop(labels=indexes, axis=0)
 
     # Format Numbers
     wslp101DataFrames[value].iloc[:, [1]] *= 2000
@@ -57,6 +62,13 @@ for value in wslp101.keys():
     wslp101GeoValues = np.zeros((len(wslp101DataFrames[value]), 1))
     wslp101DataFrames[value].insert(6, "geology", wslp101GeoValues, True)
 
+    # Remove any Nan values after calculating Rf
+    nanValueIndexes = wslp101DataFrames[value][np.isnan(wslp101DataFrames[value]['Rf'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp101DataFrames[value] = wslp101DataFrames[value].drop(labels=indexes, axis=0)
+            wslp101ElevationDataFrames[value] = wslp101ElevationDataFrames[value].drop(labels=indexes, axis=0)
+
 
 wslp108DataFrames = {}
 wslp108ElevationDataFrames = {}
@@ -67,16 +79,20 @@ for value in wslp108.keys():
 
     # Rename columns to be uniform
     individualSheetWslp108 = individualSheetWslp108.rename(columns={"Depth": "Depth ", "q_c": "qc", "Pw": "u2", "q_t": "qt/pa", "Total Stress": "prec"})
-    individualSheetWslp108 = individualSheetWslp108.dropna()
 
     # Add dataframe to dictionary
     wslp108DataFrames[value] = individualSheetWslp108
 
     # Get elevation values
     elevationWslp108 = wslp108[value].loc[:, ["Elevation"]]
-    elevationWslp108 = elevationWslp108.dropna()
-
     wslp108ElevationDataFrames[value] = elevationWslp108
+
+    # Remove any NaN values before formatting
+    nanValueIndexes = wslp108DataFrames[value][np.isnan(wslp108DataFrames[value]['prec'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp108DataFrames[value] = wslp108DataFrames[value].drop(labels=indexes, axis=0)
+            wslp108ElevationDataFrames[value] = wslp108ElevationDataFrames[value].drop(labels=indexes, axis=0)
 
     # Format Numbers
     wslp108DataFrames[value].iloc[:, [1]] *= 2000
@@ -92,6 +108,13 @@ for value in wslp108.keys():
     wslp108GeoValues = np.zeros((len(wslp108DataFrames[value]), 1))
     wslp108DataFrames[value].insert(6, "geology", wslp108GeoValues, True)
 
+    # Remove any Nan values after calculating Rf
+    nanValueIndexes = wslp108DataFrames[value][np.isnan(wslp108DataFrames[value]['Rf'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp108DataFrames[value] = wslp108DataFrames[value].drop(labels=indexes, axis=0)
+            wslp108ElevationDataFrames[value] = wslp108ElevationDataFrames[value].drop(labels=indexes, axis=0)
+
 
 wslp109DataFrames = {}
 wslp109ElevationDataFrames = {}
@@ -102,16 +125,20 @@ for value in wslp109.keys():
 
     # Rename columns to be uniform
     individualSheetWslp109 = individualSheetWslp109.rename(columns={"sp": "prec"})
-    individualSheetWslp109 = individualSheetWslp109.dropna()
 
     # Add dataframe to dictionary
     wslp109DataFrames[value] = individualSheetWslp109
 
     # Get elevation values
     elevationWslp109 = wslp109[value].loc[:, ["Elevation"]]
-    elevationWslp109 = elevationWslp109.dropna()
-
     wslp109ElevationDataFrames[value] = elevationWslp109
+
+    # Remove any NaN values before formatting
+    nanValueIndexes = wslp109DataFrames[value][np.isnan(wslp109DataFrames[value]['prec'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp109DataFrames[value] = wslp109DataFrames[value].drop(labels=indexes, axis=0)
+            wslp109ElevationDataFrames[value] = wslp109ElevationDataFrames[value].drop(labels=indexes, axis=0)
 
     # Format Numbers
     wslp109DataFrames[value].iloc[:, [1]] *= 2000
@@ -120,6 +147,14 @@ for value in wslp109.keys():
     # creating and inserting geology column
     wslp109GeoValues = np.zeros((len(wslp109DataFrames[value]), 1))
     wslp109DataFrames[value].insert(6, "geology", wslp109GeoValues, True)
+
+    # Remove any Nan values after calculating Rf
+    nanValueIndexes = wslp109DataFrames[value][np.isnan(wslp109DataFrames[value]['Rf'])]
+    if not nanValueIndexes.empty:
+        for indexes in nanValueIndexes.index:
+            wslp109DataFrames[value] = wslp109DataFrames[value].drop(labels=indexes, axis=0)
+            wslp109DataFrames[value] = wslp109ElevationDataFrames[value].drop(labels=indexes, axis=0)
+
 
 '''''
 # print dataframes
@@ -190,51 +225,81 @@ confusionMatrix = confusion_matrix(Y, htAll)
 wslp101PredictionDataFrames = {}
 wslp101OutputDataFrames = {}
 
-print(wslp101DataFrames["002Cy"])
-print(len(wslp101DataFrames["002Cy"]))
-print(wslp101DataFrames["002Cy"].dropna)
-# need to find Nan value inside of 002Cy and remove the line along with the line in elevation
+stations = pd.read_excel('WSLP_stations.xlsx', sheet_name=0)
+stations = stations.loc[:, ["Stations", "CPT"]]
 
 for value in wslp101DataFrames:
     wslp101PredictionDataFrames[value] = Mdl.predict(wslp101DataFrames[value])
 
+
 for value in wslp101PredictionDataFrames:
-    wslp101OutputDataFrames[value] = pd.DataFrame(data=wslp101ElevationDataFrames[value])
+    cpt = ""
+    for char in value:
+        if char.isdigit():
+            cpt = cpt + char
+    currentStation = stations.loc[stations["CPT"] == cpt]
+    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp101ElevationDataFrames[value]))
+    wslp101OutputDataFrames[value] = pd.DataFrame(data=stationArray)
+    wslp101OutputDataFrames[value] = pd.concat([wslp101OutputDataFrames[value], pd.DataFrame(wslp101ElevationDataFrames[value], index=wslp101OutputDataFrames[value].index)], axis=1)
     wslp101OutputDataFrames[value] = pd.concat([wslp101OutputDataFrames[value], pd.DataFrame(wslp101PredictionDataFrames[value], index=wslp101OutputDataFrames[value].index)], axis=1)
+    wslp101OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
 
+print(wslp101OutputDataFrames)
 
-'''''
-wslp101OutPutDataFrames[value] = pd.DataFrame(wslp101PredictionDataFrames, index=elevationWslp101.index)
-wslp101OutPutDataFrames[value] = wslp101OutPutDataFrames[value].rename(columns={0: 'pred'})
-wslp101OutPutDataFrames[value] = pd.concat([elevationWslp101, wslp101OutPutDataFrames[value]], axis=1)
 
 wslp108PredictionDataFrames = {}
+wslp108OutputDataFrames = {}
 
 for value in wslp108DataFrames:
-    wslp108PredictionDataFrames[value] = Mdl.predict(wslp108DataFrames[value].dropna())
+    wslp108PredictionDataFrames[value] = Mdl.predict(wslp108DataFrames[value])
+    cpt = ""
+    for char in value:
+        if char.isdigit():
+            cpt = cpt + char
+    currentStation = stations.loc[stations["CPT"] == cpt]
+    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp108ElevationDataFrames[value]))
+    wslp108OutputDataFrames[value] = pd.DataFrame(data=stationArray)
+    wslp108OutputDataFrames[value] = pd.concat([wslp108OutputDataFrames[value], pd.DataFrame(wslp108ElevationDataFrames[value], index=wslp108OutputDataFrames[value].index)], axis=1)
+    wslp108OutputDataFrames[value] = pd.concat([wslp108OutputDataFrames[value], pd.DataFrame(wslp108PredictionDataFrames[value], index=wslp108OutputDataFrames[value].index)], axis=1)
+    wslp108OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
+
+print(wslp108OutputDataFrames)
 
 
 wslp109PredictionDataFrames = {}
+wslp109OutputDataFrames = {}
 
 for value in wslp109DataFrames:
-    wslp109PredictionDataFrames[value] = Mdl.predict(wslp109DataFrames[value].dropna())
+    wslp109PredictionDataFrames[value] = Mdl.predict(wslp109DataFrames[value])
+    cpt = ""
+    for char in value:
+        if char.isdigit():
+            cpt = cpt + char
+    currentStation = stations.loc[stations["CPT"] == cpt]
+    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp109ElevationDataFrames[value]))
+    wslp109OutputDataFrames[value] = pd.DataFrame(data=stationArray)
+    wslp109OutputDataFrames[value] = pd.concat([wslp109OutputDataFrames[value], pd.DataFrame(wslp109ElevationDataFrames[value], index=wslp109OutputDataFrames[value].index)], axis=1)
+    wslp109OutputDataFrames[value] = pd.concat([wslp109OutputDataFrames[value], pd.DataFrame(wslp109PredictionDataFrames[value], index=wslp109OutputDataFrames[value].index)], axis=1)
+    wslp109OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
 
+print(wslp109OutputDataFrames)
 
-
-
-predictionDataFrameWslp108 = pd.DataFrame(wslp108PredictionDataFrames, index=elevationWslp108.index)
-predictionDataFrameWslp108 = predictionDataFrameWslp108.rename(columns={0: 'pred'})
-outputDataWslp108 = pd.concat([elevationWslp108, predictionDataFrameWslp108], axis=1)
-
-predictionDataFrameWslp109 = pd.DataFrame(wslp109PredictionDataFrames, index=elevationWslp109.index)
-predictionDataFrameWslp109 = predictionDataFrameWslp109.rename(columns={0: 'pred'})
-outputDataWslp109 = pd.concat([elevationWslp109, predictionDataFrameWslp109], axis=1)
-
-print(outputDataWslp101)
 
 with pd.ExcelWriter('outputData.xlsx') as writer:
-    outputDataWslp101.to_excel(writer, sheet_name='WSLP-101')
-    outputDataWslp108.to_excel(writer, sheet_name='WSLP-108')
-    outputDataWslp109.to_excel(writer, sheet_name='WSLP-109')
+    current = 0
+    for wslp101Sheet in wslp101OutputDataFrames:
+        wslp101OutputDataFrames[wslp101Sheet].to_excel(writer, sheet_name='WSLP-101', index=False, startrow=current, header=False)
+        current += len(wslp101OutputDataFrames[wslp101Sheet])
+        print(current)
+    current = 0
+    for wslp108Sheet in wslp108OutputDataFrames:
+        wslp108OutputDataFrames[wslp108Sheet].to_excel(writer, sheet_name='WSLP-108', index=False, startrow=current, header=False)
+        current += len(wslp108OutputDataFrames[wslp108Sheet])
+        print(current)
+    current = 0
+    for wslp109Sheet in wslp109OutputDataFrames:
+        wslp109OutputDataFrames[wslp109Sheet].to_excel(writer, sheet_name='WSLP-109', index=False, startrow=current, header=False)
+        current += len(wslp109OutputDataFrames[wslp109Sheet])
+        print(current)
+    current = 0
 
-'''''
