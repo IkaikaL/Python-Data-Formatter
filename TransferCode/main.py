@@ -5,6 +5,8 @@ import pandas as pd
 import sklearn
 import sklearn.ensemble
 import openpyxl
+import xlsxwriter
+
 
 # Modelling
 from sklearn.ensemble import RandomForestClassifier
@@ -16,6 +18,65 @@ from scipy.stats import randint
 from sklearn.tree import export_graphviz
 from IPython.display import Image
 import graphviz
+
+class DeleteNans:
+    def __init__(self, valuesDataFrame=None, elevationDataFrame=None, output=None):
+        self.valuesDataFrame = valuesDataFrame
+        self.elevationDataFrame = elevationDataFrame
+        self.output = output
+
+    def removenansprec(self):
+        nanValueIndexes = self.valuesDataFrame[np.isnan(self.valuesDataFrame['prec'])]
+        if not nanValueIndexes.empty:
+            for indexes in nanValueIndexes.index:
+                self.valuesDataFrame = self.valuesDataFrame.drop(labels=indexes, axis=0)
+                self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
+
+        return self.valuesDataFrame, self.elevationDataFrame
+
+    def removenansrf(self):
+        nanValueIndexes = self.valuesDataFrame[np.isnan(self.valuesDataFrame['Rf'])]
+        if not nanValueIndexes.empty:
+            for indexes in nanValueIndexes.index:
+                self.valuesDataFrame = self.valuesDataFrame.drop(labels=indexes, axis=0)
+                self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
+
+        return self.valuesDataFrame, self.elevationDataFrame
+
+    def removenansy(self):
+        nanValueIndexes = self.output[np.isnan(self.output['Y'])]
+        for indexes in nanValueIndexes.index:
+            self.output = self.output.drop(labels=indexes, axis=0)
+        return self.output
+
+class FormatOutput:
+    def __init__(self, cpt, sheetName, elevations, predictions):
+        self.cpt = cpt
+        self.sheetName = sheetName
+        self.elevations = elevations
+        self.predictions = predictions
+
+    def findcpt(self):
+        for char in self.sheetName:
+            if char.isdigit():
+                self.cpt = self.cpt + char
+
+        return self.cpt
+
+    def combinecolumns(self):
+        currentStation = stations.loc[stations["CPT"] == self.cpt]
+        stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(self.elevations))
+        outputDataFrame = pd.DataFrame(data=stationArray)
+        outputDataFrame = pd.concat([outputDataFrame,
+                                                    pd.DataFrame(self.elevations,
+                                                                 index=outputDataFrame.index)], axis=1)
+        outputDataFrame = pd.concat([outputDataFrame,
+                                                    pd.DataFrame(self.predictions,
+                                                                 index=outputDataFrame.index)], axis=1)
+        outputDataFrame.columns = ['X', 'Y', 'I/O']
+
+        return outputDataFrame
+
 
 data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
 
@@ -33,6 +94,8 @@ for value in wslp101.keys():
     # Get values from every sheet in WSLP-101 using headers
     individualSheetWslp101 = wslp101[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "s 'p"]]
 
+    qcSubZeroValues = individualSheetWslp101.index.where(individualSheetWslp101['qc'] < 0)
+
     # Rename columns to be uniform
     individualSheetWslp101 = individualSheetWslp101.rename(columns={"s 'p": "prec"})
 
@@ -44,11 +107,10 @@ for value in wslp101.keys():
     wslp101ElevationDataFrames[value] = elevationWslp101
 
     # Remove any NaN values before formatting
-    nanValueIndexes = wslp101DataFrames[value][np.isnan(wslp101DataFrames[value]['prec'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp101DataFrames[value] = wslp101DataFrames[value].drop(labels=indexes, axis=0)
-            wslp101ElevationDataFrames[value] = wslp101ElevationDataFrames[value].drop(labels=indexes, axis=0)
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value], elevationDataFrame=wslp101ElevationDataFrames[value])
+    modifiedDataFrames.removenansprec()
+    wslp101DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp101ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
     # Format Numbers
     wslp101DataFrames[value].iloc[:, [1]] *= 2000
@@ -63,12 +125,10 @@ for value in wslp101.keys():
     wslp101DataFrames[value].insert(6, "geology", wslp101GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    nanValueIndexes = wslp101DataFrames[value][np.isnan(wslp101DataFrames[value]['Rf'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp101DataFrames[value] = wslp101DataFrames[value].drop(labels=indexes, axis=0)
-            wslp101ElevationDataFrames[value] = wslp101ElevationDataFrames[value].drop(labels=indexes, axis=0)
-
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value], elevationDataFrame=wslp101ElevationDataFrames[value])
+    modifiedDataFrames.removenansrf()
+    wslp101DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp101ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
 wslp108DataFrames = {}
 wslp108ElevationDataFrames = {}
@@ -88,11 +148,10 @@ for value in wslp108.keys():
     wslp108ElevationDataFrames[value] = elevationWslp108
 
     # Remove any NaN values before formatting
-    nanValueIndexes = wslp108DataFrames[value][np.isnan(wslp108DataFrames[value]['prec'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp108DataFrames[value] = wslp108DataFrames[value].drop(labels=indexes, axis=0)
-            wslp108ElevationDataFrames[value] = wslp108ElevationDataFrames[value].drop(labels=indexes, axis=0)
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value], elevationDataFrame=wslp108ElevationDataFrames[value])
+    modifiedDataFrames.removenansprec()
+    wslp108DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp108ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
     # Format Numbers
     wslp108DataFrames[value].iloc[:, [1]] *= 2000
@@ -109,12 +168,10 @@ for value in wslp108.keys():
     wslp108DataFrames[value].insert(6, "geology", wslp108GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    nanValueIndexes = wslp108DataFrames[value][np.isnan(wslp108DataFrames[value]['Rf'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp108DataFrames[value] = wslp108DataFrames[value].drop(labels=indexes, axis=0)
-            wslp108ElevationDataFrames[value] = wslp108ElevationDataFrames[value].drop(labels=indexes, axis=0)
-
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value], elevationDataFrame=wslp108ElevationDataFrames[value])
+    modifiedDataFrames.removenansrf()
+    wslp108DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp108ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
 wslp109DataFrames = {}
 wslp109ElevationDataFrames = {}
@@ -134,11 +191,10 @@ for value in wslp109.keys():
     wslp109ElevationDataFrames[value] = elevationWslp109
 
     # Remove any NaN values before formatting
-    nanValueIndexes = wslp109DataFrames[value][np.isnan(wslp109DataFrames[value]['prec'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp109DataFrames[value] = wslp109DataFrames[value].drop(labels=indexes, axis=0)
-            wslp109ElevationDataFrames[value] = wslp109ElevationDataFrames[value].drop(labels=indexes, axis=0)
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value], elevationDataFrame=wslp109ElevationDataFrames[value])
+    modifiedDataFrames.removenansprec()
+    wslp109DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp109ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
     # Format Numbers
     wslp109DataFrames[value].iloc[:, [1]] *= 2000
@@ -149,19 +205,11 @@ for value in wslp109.keys():
     wslp109DataFrames[value].insert(6, "geology", wslp109GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    nanValueIndexes = wslp109DataFrames[value][np.isnan(wslp109DataFrames[value]['Rf'])]
-    if not nanValueIndexes.empty:
-        for indexes in nanValueIndexes.index:
-            wslp109DataFrames[value] = wslp109DataFrames[value].drop(labels=indexes, axis=0)
-            wslp109DataFrames[value] = wslp109ElevationDataFrames[value].drop(labels=indexes, axis=0)
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value], elevationDataFrame=wslp109ElevationDataFrames[value])
+    modifiedDataFrames.removenansrf()
+    wslp109DataFrames[value] = modifiedDataFrames.valuesDataFrame
+    wslp109ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
-
-'''''
-# print dataframes
-print(wslp101DataFrames)
-print(wslp108DataFrames)
-print(wslp109DataFrames)
-'''''
 
 dataLengthWslp101 = len(wslp101DataFrames[list(wslp101DataFrames.keys())[0]])
 dataLengthWslp108 = len(wslp108DataFrames[list(wslp108DataFrames.keys())[0]])
@@ -186,16 +234,6 @@ ytr = Y.loc[idx[1:round(p*m)]]
 
 xte = X.loc[idx[round(p*m)+1:len(idx)-1]]
 
-'''''
-newDataTestWslp101 = goodDataWslp101.loc[idxWslp101[round(p*dataLengthWslp101)+1:len(idxWslp101)-1]]
-newDataTestWslp108 = goodDataWslp108.loc[idxWslp108[round(p*dataLengthWslp108)+1:len(idxWslp108)-1]]
-newDataTestWslp109 = goodDataWslp109.loc[idxWslp109[round(p*dataLengthWslp109)+1:len(idxWslp109)-1]]
-
-trimmedElevationWslp101 = elevationWslp101.loc[idxWslp101[round(p*dataLengthWslp101)+1:len(idxWslp101)-1]]
-trimmedElevationWslp108 = elevationWslp108.loc[idxWslp108[round(p*dataLengthWslp108)+1:len(idxWslp108)-1]]
-trimmedElevationWslp109 = elevationWslp109.loc[idxWslp109[round(p*dataLengthWslp109)+1:len(idxWslp109)-1]]
-'''''
-
 yte = Y.loc[idx[round(p*m)+1:len(idx)-1]]
 
 
@@ -208,19 +246,17 @@ hte = Mdl.predict(xte)
 accuracy = accuracy_score(yte, hte)
 
 confusionMatrix = confusion_matrix(yte, hte)
-#ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 htr = Mdl.predict(xtr)
 accuracy = accuracy_score(ytr, htr)
 
 confusionMatrix = confusion_matrix(ytr, htr)
-#ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
 
 htAll = Mdl.predict(X)
 accuracy = accuracy_score(Y, htAll)
 
 confusionMatrix = confusion_matrix(Y, htAll)
-#ConfusionMatrixDisplay(confusion_matrix=confusionMatrix).plot()
+
 
 wslp101PredictionDataFrames = {}
 wslp101OutputDataFrames = {}
@@ -228,78 +264,99 @@ wslp101OutputDataFrames = {}
 stations = pd.read_excel('WSLP_stations.xlsx', sheet_name=0)
 stations = stations.loc[:, ["Stations", "CPT"]]
 
+# Format output by finding CPT and generating 3 columns
 for value in wslp101DataFrames:
     wslp101PredictionDataFrames[value] = Mdl.predict(wslp101DataFrames[value])
-
-
-for value in wslp101PredictionDataFrames:
-    cpt = ""
-    for char in value:
-        if char.isdigit():
-            cpt = cpt + char
-    currentStation = stations.loc[stations["CPT"] == cpt]
-    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp101ElevationDataFrames[value]))
-    wslp101OutputDataFrames[value] = pd.DataFrame(data=stationArray)
-    wslp101OutputDataFrames[value] = pd.concat([wslp101OutputDataFrames[value], pd.DataFrame(wslp101ElevationDataFrames[value], index=wslp101OutputDataFrames[value].index)], axis=1)
-    wslp101OutputDataFrames[value] = pd.concat([wslp101OutputDataFrames[value], pd.DataFrame(wslp101PredictionDataFrames[value], index=wslp101OutputDataFrames[value].index)], axis=1)
-    wslp101OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
-
-print(wslp101OutputDataFrames)
+    formatOutput = FormatOutput("", value, wslp101ElevationDataFrames[value], wslp101PredictionDataFrames[value])
+    cpt = formatOutput.findcpt()
+    output = formatOutput.combinecolumns()
+    wslp101OutputDataFrames[value] = output
+    deleteNans = DeleteNans(output=wslp101OutputDataFrames[value])
+    wslp101OutputDataFrames[value] = deleteNans.removenansy()
 
 
 wslp108PredictionDataFrames = {}
 wslp108OutputDataFrames = {}
 
+# Format output by finding CPT and generating 3 columns
 for value in wslp108DataFrames:
     wslp108PredictionDataFrames[value] = Mdl.predict(wslp108DataFrames[value])
-    cpt = ""
-    for char in value:
-        if char.isdigit():
-            cpt = cpt + char
-    currentStation = stations.loc[stations["CPT"] == cpt]
-    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp108ElevationDataFrames[value]))
-    wslp108OutputDataFrames[value] = pd.DataFrame(data=stationArray)
-    wslp108OutputDataFrames[value] = pd.concat([wslp108OutputDataFrames[value], pd.DataFrame(wslp108ElevationDataFrames[value], index=wslp108OutputDataFrames[value].index)], axis=1)
-    wslp108OutputDataFrames[value] = pd.concat([wslp108OutputDataFrames[value], pd.DataFrame(wslp108PredictionDataFrames[value], index=wslp108OutputDataFrames[value].index)], axis=1)
-    wslp108OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
-
-print(wslp108OutputDataFrames)
+    formatOutput = FormatOutput("", value, wslp108ElevationDataFrames[value], wslp108PredictionDataFrames[value])
+    cpt = formatOutput.findcpt()
+    output = formatOutput.combinecolumns()
+    wslp108OutputDataFrames[value] = output
+    deleteNans = DeleteNans(output=wslp108OutputDataFrames[value])
+    wslp108OutputDataFrames[value] = deleteNans.removenansy()
 
 
 wslp109PredictionDataFrames = {}
 wslp109OutputDataFrames = {}
 
+# Format output by finding CPT and generating 3 columns
 for value in wslp109DataFrames:
     wslp109PredictionDataFrames[value] = Mdl.predict(wslp109DataFrames[value])
-    cpt = ""
-    for char in value:
-        if char.isdigit():
-            cpt = cpt + char
-    currentStation = stations.loc[stations["CPT"] == cpt]
-    stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(wslp109ElevationDataFrames[value]))
-    wslp109OutputDataFrames[value] = pd.DataFrame(data=stationArray)
-    wslp109OutputDataFrames[value] = pd.concat([wslp109OutputDataFrames[value], pd.DataFrame(wslp109ElevationDataFrames[value], index=wslp109OutputDataFrames[value].index)], axis=1)
-    wslp109OutputDataFrames[value] = pd.concat([wslp109OutputDataFrames[value], pd.DataFrame(wslp109PredictionDataFrames[value], index=wslp109OutputDataFrames[value].index)], axis=1)
-    wslp109OutputDataFrames[value].columns = ['X', 'Y', 'I/O']
-
-print(wslp109OutputDataFrames)
+    formatOutput = FormatOutput("", value, wslp109ElevationDataFrames[value], wslp109PredictionDataFrames[value])
+    cpt = formatOutput.findcpt()
+    output = formatOutput.combinecolumns()
+    wslp109OutputDataFrames[value] = output
+    deleteNans = DeleteNans(output=wslp109OutputDataFrames[value])
+    wslp109OutputDataFrames[value] = deleteNans.removenansy()
 
 
+
+# Output to Excel file
+# Using current to indicate that writer should start after data already printed
 with pd.ExcelWriter('outputData.xlsx') as writer:
     current = 0
     for wslp101Sheet in wslp101OutputDataFrames:
         wslp101OutputDataFrames[wslp101Sheet].to_excel(writer, sheet_name='WSLP-101', index=False, startrow=current, header=False)
         current += len(wslp101OutputDataFrames[wslp101Sheet])
-        print(current)
     current = 0
     for wslp108Sheet in wslp108OutputDataFrames:
         wslp108OutputDataFrames[wslp108Sheet].to_excel(writer, sheet_name='WSLP-108', index=False, startrow=current, header=False)
         current += len(wslp108OutputDataFrames[wslp108Sheet])
-        print(current)
     current = 0
     for wslp109Sheet in wslp109OutputDataFrames:
         wslp109OutputDataFrames[wslp109Sheet].to_excel(writer, sheet_name='WSLP-109', index=False, startrow=current, header=False)
         current += len(wslp109OutputDataFrames[wslp109Sheet])
-        print(current)
     current = 0
 
+workbook = xlsxwriter.Workbook('outputChart.xlsx')
+
+wslp101Worksheet = workbook.add_worksheet()
+wslp108Worksheet = workbook.add_worksheet()
+wslp109Worksheet = workbook.add_worksheet()
+
+headings = ['CPT', 'Elevation', 'Prediction']
+
+wslp101Worksheet.write_row('A1', headings)
+wslp108Worksheet.write_row('A1', headings)
+wslp109Worksheet.write_row('A1', headings)
+
+current = 1
+
+for wslp101Sheet in wslp101OutputDataFrames:
+    wslp101Worksheet.write_column(row=current, col=0, data=wslp101OutputDataFrames[wslp101Sheet]['X'])
+    wslp101Worksheet.write_column(row=current, col=1, data=wslp101OutputDataFrames[wslp101Sheet]['Y'])
+    wslp101Worksheet.write_column(row=current, col=2, data=wslp101OutputDataFrames[wslp101Sheet]['I/O'])
+    current += len(wslp101OutputDataFrames[wslp101Sheet])
+
+current = 1
+
+for wslp108Sheet in wslp108OutputDataFrames:
+    wslp108Worksheet.write_column(row=current, col=0, data=wslp108OutputDataFrames[wslp108Sheet]['X'])
+    wslp108Worksheet.write_column(row=current, col=1, data=wslp108OutputDataFrames[wslp108Sheet]['Y'])
+    wslp108Worksheet.write_column(row=current, col=2, data=wslp108OutputDataFrames[wslp108Sheet]['I/O'])
+    current += len(wslp108OutputDataFrames[wslp108Sheet])
+
+current = 1
+
+for wslp109Sheet in wslp109OutputDataFrames:
+    wslp109Worksheet.write_column(row=current, col=0, data=wslp109OutputDataFrames[wslp109Sheet]['X'])
+    wslp109Worksheet.write_column(row=current, col=1, data=wslp109OutputDataFrames[wslp109Sheet]['Y'])
+    wslp109Worksheet.write_column(row=current, col=2, data=wslp109OutputDataFrames[wslp109Sheet]['I/O'])
+    current += len(wslp109OutputDataFrames[wslp109Sheet])
+
+
+scatterPlot = wslp101Worksheet = workbook.add_chart({'type': 'scatter', })
+workbook.close()
