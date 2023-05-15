@@ -1,23 +1,12 @@
-import statistics
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import sklearn
 import sklearn.ensemble
 import openpyxl
 import xlsxwriter
 
-
 # Modelling
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, ConfusionMatrixDisplay
-from sklearn.model_selection import RandomizedSearchCV, train_test_split
-from scipy.stats import randint
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay
 
-# Tree Visualisation
-from sklearn.tree import export_graphviz
-from IPython.display import Image
-import graphviz
 
 class DeleteNans:
     def __init__(self, valuesDataFrame=None, elevationDataFrame=None, output=None):
@@ -49,6 +38,7 @@ class DeleteNans:
             self.output = self.output.drop(labels=indexes, axis=0)
         return self.output
 
+
 class FormatOutput:
     def __init__(self, cpt, sheetName, elevations, predictions):
         self.cpt = cpt
@@ -68,11 +58,11 @@ class FormatOutput:
         stationArray = np.repeat(a=int(currentStation.iloc[0]["Stations"]), repeats=len(self.elevations))
         outputDataFrame = pd.DataFrame(data=stationArray)
         outputDataFrame = pd.concat([outputDataFrame,
-                                                    pd.DataFrame(self.elevations,
-                                                                 index=outputDataFrame.index)], axis=1)
+                                     pd.DataFrame(self.elevations,
+                                                  index=outputDataFrame.index)], axis=1)
         outputDataFrame = pd.concat([outputDataFrame,
-                                                    pd.DataFrame(self.predictions,
-                                                                 index=outputDataFrame.index)], axis=1)
+                                     pd.DataFrame(self.predictions,
+                                                  index=outputDataFrame.index)], axis=1)
         outputDataFrame.columns = ['X', 'Y', 'I/O']
 
         return outputDataFrame
@@ -80,12 +70,66 @@ class FormatOutput:
 
 data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
 
-wslp101 = pd.read_excel('WSLP-101.xlsx', header=8, sheet_name=None, skiprows=[9, 10, 11])
+X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
+Y = data.loc[:, ['organic']]  # Output column
+m = len(Y)
 
-wslp108 = pd.read_excel('B-WSLP-108.xlsx', header=10, sheet_name=None, skiprows=[11, 12])
+# Randomizing data
+np.set_printoptions(suppress=True, precision=15)
+np.random.seed(0)
 
-wslp109 = pd.read_excel('C-WSLP-109.xlsx', header=8, sheet_name=None, skiprows=[9, 10, 11])
+p = .8
+idx = np.random.permutation(m)
+xtr = X.loc[idx[1:round(p * m)]]
+ytr = Y.loc[idx[1:round(p * m)]]
+xte = X.loc[idx[round(p * m) + 1:len(idx) - 1]]
+yte = Y.loc[idx[round(p * m) + 1:len(idx) - 1]]
 
+# Create a random forest model
+Mdl = sklearn.ensemble.RandomForestClassifier()
+Mdl.fit(xtr, np.ravel(ytr))
+
+hte = Mdl.predict(xte)
+accuracy_te = accuracy_score(yte, hte)
+print("accuracy_te:", accuracy_te)
+confusionMatrix1 = confusion_matrix(yte, hte)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix1).plot()
+
+htr = Mdl.predict(xtr)
+accuracy_tr = accuracy_score(ytr, htr)
+print("accuracy_tr:", accuracy_tr)
+confusionMatrix2 = confusion_matrix(ytr, htr)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix2).plot()
+
+htAll = Mdl.predict(X)
+accuracy_All = accuracy_score(Y, htAll)
+print("accuracy_All:", accuracy_All)
+confusionMatrix3 = confusion_matrix(Y, htAll)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix3).plot()
+# plt.show()
+
+'''''
+data2 = pd.read_excel('wslp_f29_pred.xlsx', sheet_name=0)
+X2 = data2.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology']]  # 7 feature columns
+Y2 = data2.loc[:, ['organic']]  # Output column
+
+htAllPred = Mdl.predict(X2)
+accuracy_AllPred = accuracy_score(Y2, htAllPred)
+print("accuracy_AllPred:", accuracy_AllPred)
+confusionMatrix4 = confusion_matrix(Y2, htAllPred)
+ConfusionMatrixDisplay(confusion_matrix=confusionMatrix4).plot()
+plt.show()
+
+predictionDataAll = pd.DataFrame(htAllPred, index=X2.index)
+predictionDataAll = predictionDataAll.rename(columns={0: 'pred'})
+outputDataAll = pd.concat([X2, predictionDataAll], axis=1)
+
+with pd.ExcelWriter('Results1.xlsx') as writer:
+    outputDataAll.to_excel(writer, sheet_name='All')
+
+'''''
+
+wslp101 = pd.read_excel('A-WSLP-101.xlsx', header=8, sheet_name=None, skiprows=[9, 10, 11])
 
 wslp101DataFrames = {}
 wslp101ElevationDataFrames = {}
@@ -107,7 +151,8 @@ for value in wslp101.keys():
     wslp101ElevationDataFrames[value] = elevationWslp101
 
     # Remove any NaN values before formatting
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value], elevationDataFrame=wslp101ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value],
+                                    elevationDataFrame=wslp101ElevationDataFrames[value])
     modifiedDataFrames.removenansprec()
     wslp101DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp101ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
@@ -116,7 +161,6 @@ for value in wslp101.keys():
     wslp101DataFrames[value].iloc[:, [1]] *= 2000
     wslp101DataFrames[value].iloc[:, [2]] *= 2000
     wslp101DataFrames[value].iloc[:, [3]] *= 144
-
     wslp101DataFrames[value]['qt/pa'] = np.log10(wslp101DataFrames[value]['qt/pa'])
     wslp101DataFrames[value]['Rf'] = np.log10(wslp101DataFrames[value]['Rf'])
 
@@ -125,10 +169,13 @@ for value in wslp101.keys():
     wslp101DataFrames[value].insert(6, "geology", wslp101GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value], elevationDataFrame=wslp101ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value],
+                                    elevationDataFrame=wslp101ElevationDataFrames[value])
     modifiedDataFrames.removenansrf()
     wslp101DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp101ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
+
+wslp108 = pd.read_excel('B-WSLP-108.xlsx', header=10, sheet_name=None, skiprows=[11, 12])
 
 wslp108DataFrames = {}
 wslp108ElevationDataFrames = {}
@@ -138,7 +185,8 @@ for value in wslp108.keys():
     individualSheetWslp108 = wslp108[value].loc[:, ["Depth", "q_c", "fs", "Pw", "q_t", "Rf", "Total Stress"]]
 
     # Rename columns to be uniform
-    individualSheetWslp108 = individualSheetWslp108.rename(columns={"Depth": "Depth ", "q_c": "qc", "Pw": "u2", "q_t": "qt/pa", "Total Stress": "prec"})
+    individualSheetWslp108 = individualSheetWslp108.rename(
+        columns={"Depth": "Depth ", "q_c": "qc", "Pw": "u2", "q_t": "qt/pa", "Total Stress": "prec"})
 
     # Add dataframe to dictionary
     wslp108DataFrames[value] = individualSheetWslp108
@@ -148,7 +196,8 @@ for value in wslp108.keys():
     wslp108ElevationDataFrames[value] = elevationWslp108
 
     # Remove any NaN values before formatting
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value], elevationDataFrame=wslp108ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value],
+                                    elevationDataFrame=wslp108ElevationDataFrames[value])
     modifiedDataFrames.removenansprec()
     wslp108DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp108ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
@@ -158,8 +207,6 @@ for value in wslp108.keys():
     wslp108DataFrames[value].iloc[:, [2]] *= 2000
     wslp108DataFrames[value].iloc[:, [3]] *= 144
     wslp108DataFrames[value].iloc[:, [4]] /= 1.0581
-    wslp108DataFrames[value]['prec'] = .33 * (5 - wslp108DataFrames[value]['qt/pa']) * 2000 - wslp108DataFrames[value]['prec']
-
     wslp108DataFrames[value]['qt/pa'] = np.log10(wslp108DataFrames[value]['qt/pa'])
     wslp108DataFrames[value]['Rf'] = np.log10(wslp108DataFrames[value]['Rf'])
 
@@ -168,10 +215,13 @@ for value in wslp108.keys():
     wslp108DataFrames[value].insert(6, "geology", wslp108GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value], elevationDataFrame=wslp108ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp108DataFrames[value],
+                                    elevationDataFrame=wslp108ElevationDataFrames[value])
     modifiedDataFrames.removenansrf()
     wslp108DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp108ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
+
+wslp109 = pd.read_excel('C-WSLP-109.xlsx', header=8, sheet_name=None, skiprows=[9, 10, 11])
 
 wslp109DataFrames = {}
 wslp109ElevationDataFrames = {}
@@ -191,72 +241,33 @@ for value in wslp109.keys():
     wslp109ElevationDataFrames[value] = elevationWslp109
 
     # Remove any NaN values before formatting
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value], elevationDataFrame=wslp109ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value],
+                                    elevationDataFrame=wslp109ElevationDataFrames[value])
     modifiedDataFrames.removenansprec()
     wslp109DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp109ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
     # Format Numbers
     wslp109DataFrames[value].iloc[:, [1]] *= 2000
+    wslp109DataFrames[value].iloc[:, [2]] *= 2000
+    wslp109DataFrames[value].iloc[:, [3]] *= 144
     wslp109DataFrames[value]['qt/pa'] = np.log10(wslp109DataFrames[value]['qt/pa'])
+    wslp109DataFrames[value]['Rf'] = np.log10(wslp109DataFrames[value]['Rf'])
 
     # creating and inserting geology column
     wslp109GeoValues = np.zeros((len(wslp109DataFrames[value]), 1))
     wslp109DataFrames[value].insert(6, "geology", wslp109GeoValues, True)
 
     # Remove any Nan values after calculating Rf
-    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value], elevationDataFrame=wslp109ElevationDataFrames[value])
+    modifiedDataFrames = DeleteNans(valuesDataFrame=wslp109DataFrames[value],
+                                    elevationDataFrame=wslp109ElevationDataFrames[value])
     modifiedDataFrames.removenansrf()
     wslp109DataFrames[value] = modifiedDataFrames.valuesDataFrame
     wslp109ElevationDataFrames[value] = modifiedDataFrames.elevationDataFrame
 
-
 dataLengthWslp101 = len(wslp101DataFrames[list(wslp101DataFrames.keys())[0]])
 dataLengthWslp108 = len(wslp108DataFrames[list(wslp108DataFrames.keys())[0]])
 dataLengthWslp109 = len(wslp109DataFrames[list(wslp109DataFrames.keys())[0]])
-
-
-X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
-Y = data.loc[:, ['organic']]  # Output column
-m = len(Y)
-
-
-# Randomizing data
-np.set_printoptions(suppress=True, precision=15)
-np.random.seed(0)
-p = .8
-
-idx = np.random.permutation(m)
-
-xtr = X.loc[idx[1:round(p*m)]]
-
-ytr = Y.loc[idx[1:round(p*m)]]
-
-xte = X.loc[idx[round(p*m)+1:len(idx)-1]]
-
-yte = Y.loc[idx[round(p*m)+1:len(idx)-1]]
-
-
-# Create a random forest model
-Mdl = sklearn.ensemble.RandomForestClassifier()
-Mdl.fit(xtr, np.ravel(ytr))
-
-hte = Mdl.predict(xte)
-
-accuracy = accuracy_score(yte, hte)
-
-confusionMatrix = confusion_matrix(yte, hte)
-
-htr = Mdl.predict(xtr)
-accuracy = accuracy_score(ytr, htr)
-
-confusionMatrix = confusion_matrix(ytr, htr)
-
-htAll = Mdl.predict(X)
-accuracy = accuracy_score(Y, htAll)
-
-confusionMatrix = confusion_matrix(Y, htAll)
-
 
 wslp101PredictionDataFrames = {}
 wslp101OutputDataFrames = {}
@@ -274,7 +285,6 @@ for value in wslp101DataFrames:
     deleteNans = DeleteNans(output=wslp101OutputDataFrames[value])
     wslp101OutputDataFrames[value] = deleteNans.removenansy()
 
-
 wslp108PredictionDataFrames = {}
 wslp108OutputDataFrames = {}
 
@@ -287,7 +297,6 @@ for value in wslp108DataFrames:
     wslp108OutputDataFrames[value] = output
     deleteNans = DeleteNans(output=wslp108OutputDataFrames[value])
     wslp108OutputDataFrames[value] = deleteNans.removenansy()
-
 
 wslp109PredictionDataFrames = {}
 wslp109OutputDataFrames = {}
@@ -302,25 +311,28 @@ for value in wslp109DataFrames:
     deleteNans = DeleteNans(output=wslp109OutputDataFrames[value])
     wslp109OutputDataFrames[value] = deleteNans.removenansy()
 
-
-
 # Output to Excel file
 # Using current to indicate that writer should start after data already printed
 with pd.ExcelWriter('outputData.xlsx') as writer:
     current = 0
     for wslp101Sheet in wslp101OutputDataFrames:
-        wslp101OutputDataFrames[wslp101Sheet].to_excel(writer, sheet_name='WSLP-101', index=False, startrow=current, header=False)
+        wslp101OutputDataFrames[wslp101Sheet].to_excel(writer, sheet_name='WSLP-101', index=False, startrow=current,
+                                                       header=False)
         current += len(wslp101OutputDataFrames[wslp101Sheet])
     current = 0
     for wslp108Sheet in wslp108OutputDataFrames:
-        wslp108OutputDataFrames[wslp108Sheet].to_excel(writer, sheet_name='WSLP-108', index=False, startrow=current, header=False)
+        wslp108OutputDataFrames[wslp108Sheet].to_excel(writer, sheet_name='WSLP-108', index=False, startrow=current,
+                                                       header=False)
         current += len(wslp108OutputDataFrames[wslp108Sheet])
     current = 0
     for wslp109Sheet in wslp109OutputDataFrames:
-        wslp109OutputDataFrames[wslp109Sheet].to_excel(writer, sheet_name='WSLP-109', index=False, startrow=current, header=False)
+        wslp109OutputDataFrames[wslp109Sheet].to_excel(writer, sheet_name='WSLP-109', index=False, startrow=current,
+                                                       header=False)
         current += len(wslp109OutputDataFrames[wslp109Sheet])
     current = 0
 
+# Chart code
+'''''
 workbook = xlsxwriter.Workbook('outputChart.xlsx')
 
 wslp101Worksheet = workbook.add_worksheet()
@@ -360,3 +372,4 @@ for wslp109Sheet in wslp109OutputDataFrames:
 
 scatterPlot = wslp101Worksheet = workbook.add_chart({'type': 'scatter', })
 workbook.close()
+'''''
