@@ -68,7 +68,57 @@ class FormatOutput:
         return outputDataFrame
 
 
+class wslpVersionA:
+    def __init__(self, wslpSheet, wslpDataFrame, wslpElevationDataFrame):
+        self.wslpSheet = wslpSheet
+        self.wslpDataFrame = wslpDataFrame
+        self.wslpElevationDataFrame = wslpElevationDataFrame
+
+    def formatValues(self):
+        for value in self.wslpSheet.keys():
+            # Get values from every sheet in WSLP-101 using headers
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "s 'p"]]
+
+            # Rename columns to be uniform
+            individualSheet = individualSheet.rename(columns={"s 'p": "prec"})
+
+            # Add dataframe to dictionary
+            self.wslpDataFrame[value] = individualSheet
+
+            # Get elevation values
+            elevation = self.wslpSheet[value].loc[:, ["Elevation"]]
+            self.wslpElevationDataFrame[value] = elevation
+
+            # Remove any NaN values before formatting
+            modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value],
+                                            elevationDataFrame=wslp101ElevationDataFrames[value])
+            modifiedDataFrames.removenansprec()
+            self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
+            self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+
+            # Format Numbers
+            self.wslpDataFrame[value].iloc[:, [1]] *= 2000
+            self.wslpDataFrame[value].iloc[:, [2]] *= 2000
+            self.wslpDataFrame[value].iloc[:, [3]] *= 144
+            self.wslpDataFrame[value]['qt/pa'] = np.log10(wslp101DataFrames[value]['qt/pa'])
+            self.wslpDataFrame[value]['Rf'] = np.log10(wslp101DataFrames[value]['Rf'])
+
+            # creating and inserting geology column
+            geoValues = np.zeros((len(self.wslpDataFrame[value]), 1))
+            self.wslpDataFrame[value].insert(6, "geology", geoValues, True)
+
+            # Remove any Nan values after calculating Rf
+            modifiedDataFrames = DeleteNans(valuesDataFrame=wslp101DataFrames[value],
+                                            elevationDataFrame=wslp101ElevationDataFrames[value])
+            modifiedDataFrames.removenansrf()
+            self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
+            self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+
+        return self.wslpDataFrame, self.wslpElevationDataFrame
+
+
 data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
+
 
 X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
@@ -134,11 +184,16 @@ wslp101 = pd.read_excel('A-WSLP-101.xlsx', header=8, sheet_name=None, skiprows=[
 wslp101DataFrames = {}
 wslp101ElevationDataFrames = {}
 
+formattedWslps = wslpVersionA(wslpSheet=wslp101, wslpDataFrame=wslp101DataFrames, wslpElevationDataFrame=wslp101ElevationDataFrames)
+formattedWslps.formatValues()
+
+print(wslp101DataFrames)
+print(wslp101ElevationDataFrames)
+
+
 for value in wslp101.keys():
     # Get values from every sheet in WSLP-101 using headers
     individualSheetWslp101 = wslp101[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "s 'p"]]
-
-    qcSubZeroValues = individualSheetWslp101.index.where(individualSheetWslp101['qc'] < 0)
 
     # Rename columns to be uniform
     individualSheetWslp101 = individualSheetWslp101.rename(columns={"s 'p": "prec"})
