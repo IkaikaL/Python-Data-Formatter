@@ -25,8 +25,14 @@ class DeleteNans:
 
     def removenansrf(self):
         nanValueIndexes = self.valuesDataFrame[pd.isna(self.valuesDataFrame['Rf'])]
+        infValueIndexes = self.valuesDataFrame[np.isinf(self.valuesDataFrame['Rf'])]
         if not nanValueIndexes.empty:
             for indexes in nanValueIndexes.index:
+                self.valuesDataFrame = self.valuesDataFrame.drop(labels=indexes, axis=0)
+                self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
+
+        if not infValueIndexes.empty:
+            for indexes in infValueIndexes.index:
                 self.valuesDataFrame = self.valuesDataFrame.drop(labels=indexes, axis=0)
                 self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
 
@@ -37,6 +43,15 @@ class DeleteNans:
         for indexes in nanValueIndexes.index:
             self.output = self.output.drop(labels=indexes, axis=0)
         return self.output
+
+    def removenansqtpa(self):
+        nanValueIndexes = self.valuesDataFrame[pd.isna(self.valuesDataFrame['qt/pa'])]
+        if not nanValueIndexes.empty:
+            for indexes in nanValueIndexes.index:
+                self.valuesDataFrame = self.valuesDataFrame.drop(labels=indexes, axis=0)
+                self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
+
+        return self.valuesDataFrame, self.elevationDataFrame
 
 class FormatOutput:
     def __init__(self, cpt, sheetName, elevations, predictions, stations=None):
@@ -107,14 +122,7 @@ class wslpVersionFormatting:
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
 
             # Format Numbers
-            wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="A", units=individualSheetUnits)
-            '''''
-            self.wslpDataFrame[value].iloc[:, [1]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [2]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [3]] *= 144
-            self.wslpDataFrame[value]['qt/pa'] = np.log10(wslp101DataFrames[value]['qt/pa'])
-            self.wslpDataFrame[value]['Rf'] = np.log10(wslp101DataFrames[value]['Rf'])
-            '''''
+            self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="A", units=individualSheetUnits)
 
             # creating and inserting geology column
             geoValues = np.zeros((len(self.wslpDataFrame[value]), 1))
@@ -161,15 +169,7 @@ class wslpVersionFormatting:
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
 
             # Format Numbers
-            wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="B", units=individualSheetUnits)
-            '''''
-            self.wslpDataFrame[value].iloc[:, [1]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [2]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [3]] *= 144
-            self.wslpDataFrame[value].iloc[:, [4]] /= 1.0581
-            self.wslpDataFrame[value]['qt/pa'] = np.log10(self.wslpDataFrame[value]['qt/pa'])
-            self.wslpDataFrame[value]['Rf'] = np.log10(self.wslpDataFrame[value]['Rf'])
-            '''''
+            self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="B", units=individualSheetUnits)
 
             # creating and inserting geology column
             geoValues = np.zeros((len(self.wslpDataFrame[value]), 1))
@@ -215,15 +215,8 @@ class wslpVersionFormatting:
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
 
             # Format Numbers
-            wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="C", units=individualSheetUnits)
+            self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="C", units=individualSheetUnits)
 
-            '''''
-            self.wslpDataFrame[value].iloc[:, [1]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [2]] *= 2000
-            self.wslpDataFrame[value].iloc[:, [3]] *= 144
-            self.wslpDataFrame[value]['qt/pa'] = np.log10(self.wslpDataFrame[value]['qt/pa'])
-            self.wslpDataFrame[value]['Rf'] = np.log10(self.wslpDataFrame[value]['Rf'])
-            '''''
             # creating and inserting geology column
             geoValues = np.zeros((len(self.wslpDataFrame[value]), 1))
             self.wslpDataFrame[value].insert(6, "geology", geoValues, True)
@@ -232,6 +225,54 @@ class wslpVersionFormatting:
             modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
                                             elevationDataFrame=self.wslpElevationDataFrame[value])
             modifiedDataFrames.removenansrf()
+            self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
+            self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+
+        return self.wslpDataFrame, self.wslpElevationDataFrame
+
+    def formatValuesMau3(self):
+        for value in self.wslpSheet.keys():
+            # Get values from every sheet in WSLP-101 using headers
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth .1", "qc.1", 'fs.1', 'u2.1', 'qt/pa', 'Rf', "s 'p"]]
+
+            # Rename columns to be uniform
+            individualSheet = individualSheet.rename(columns={"Depth .1" : "Depth ", "qc.1": "qc", "fs.1": "fs", "u2.1": "u2", "s 'p": "prec"})
+
+            individualSheetUnits = individualSheet.head(1)
+            individualSheet = individualSheet.iloc[1:]
+            individualSheet.reset_index(drop=True, inplace=True)
+
+            # Add dataframe to dictionary
+            self.wslpDataFrame[value] = individualSheet
+
+            # Get elevation values
+            elevation = self.wslpSheet[value].loc[:, ["Elevation"]]
+            elevation.head(1)
+            elevation = elevation.iloc[1:]
+            elevation.reset_index(drop=True, inplace=True)
+            self.wslpElevationDataFrame[value] = elevation
+
+            # Remove any NaN values before formatting
+            modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
+                                            elevationDataFrame=self.wslpElevationDataFrame[value])
+            modifiedDataFrames.removenansprec()
+
+            self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
+
+            self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+
+            # Format Numbers
+            self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="A", units=individualSheetUnits)
+
+            # creating and inserting geology column
+            geoValues = np.zeros((len(self.wslpDataFrame[value]), 1))
+            self.wslpDataFrame[value].insert(6, "geology", geoValues, True)
+
+            # Remove any Nan values after calculating Rf
+            modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
+                                            elevationDataFrame=self.wslpElevationDataFrame[value])
+            modifiedDataFrames.removenansrf()
+            modifiedDataFrames.removenansqtpa()
             self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
 
@@ -252,16 +293,15 @@ class wslpVersionFormatting:
         elif version == "B":
             dataSheet = dataSheet.astype(float)
             for index, value in enumerate(units.iloc[0].values):
-                if value == "tsf":
+                if value == "(tsf)":
                     dataSheet.iloc[:, [index]] *= 2000
 
-                elif value == "psi":
+                elif value == "(psi)":
                     dataSheet.iloc[:, [index]] *= 144
 
             dataSheet.loc[:, ['qt/pa']] /= 1.0581
             dataSheet['qt/pa'] = np.log10(dataSheet['qt/pa'])
             dataSheet['Rf'] = np.log10(dataSheet['Rf'])
-
         elif version == "C":
             dataSheet = dataSheet.astype(float)
             for index, value in enumerate(units.iloc[0].values):
@@ -273,7 +313,6 @@ class wslpVersionFormatting:
 
         else:
             print("wrong version input")
-
         return dataSheet
 
 
@@ -470,8 +509,8 @@ wslpMau3DataFrames = {}
 wslpMau3ElevationDataFrames = {}
 
 # Format file based on type
-formattedWslpsA = wslpVersionFormatting(wslpSheet=wslpMau3, wslpDataFrame=wslpMau3DataFrames, wslpElevationDataFrame=wslpMau3ElevationDataFrames)
-formattedWslpsA.formatValuesA()
+formattedWslpsMau3 = wslpVersionFormatting(wslpSheet=wslpMau3, wslpDataFrame=wslpMau3DataFrames, wslpElevationDataFrame=wslpMau3ElevationDataFrames)
+formattedWslpsMau3.formatValuesMau3()
 
 # Find length of all data sets
 dataLengthWslp101 = len(wslp101DataFrames[list(wslp101DataFrames.keys())[0]])
@@ -653,59 +692,17 @@ with pd.ExcelWriter('outputData.xlsx') as writer:
     for wslpMau1Sheet in wslpMau1OutputDataFrames:
         wslpMau1OutputDataFrames[wslpMau1Sheet].to_excel(writer, sheet_name='WSLP-Mau1', index=False, startrow=current,
                                                        header=False)
-        current += len(wslpMau1OutputDataFrames[wslp110Sheet])
+        current += len(wslpMau1OutputDataFrames[wslpMau1Sheet])
     current = 0
     for wslpMau2Sheet in wslpMau2OutputDataFrames:
         wslpMau2OutputDataFrames[wslpMau2Sheet].to_excel(writer, sheet_name='WSLP-Mau2', index=False, startrow=current,
                                                        header=False)
-        current += len(wslpMau2OutputDataFrames[wslp110Sheet])
+        current += len(wslpMau2OutputDataFrames[wslpMau2Sheet])
     current = 0
     for wslpMau3Sheet in wslpMau3OutputDataFrames:
         wslpMau3OutputDataFrames[wslpMau3Sheet].to_excel(writer, sheet_name='WSLP-Mau3', index=False, startrow=current,
                                                        header=False)
-        current += len(wslpMau3OutputDataFrames[wslp110Sheet])
+        current += len(wslpMau3OutputDataFrames[wslpMau3Sheet])
     current = 0
 
-# Chart code
 
-workbook = xlsxwriter.Workbook('outputChart.xlsx')
-
-wslp101Worksheet = workbook.add_worksheet()
-wslp108Worksheet = workbook.add_worksheet()
-wslp109Worksheet = workbook.add_worksheet()
-
-headings = ['CPT', 'Elevation', 'Prediction']
-
-wslp101Worksheet.write_row('A1', headings)
-wslp108Worksheet.write_row('A1', headings)
-wslp109Worksheet.write_row('A1', headings)
-
-current = 1
-
-for wslp101Sheet in wslp101OutputDataFrames:
-    wslp101Worksheet.write_column(row=current, col=0, data=wslp101OutputDataFrames[wslp101Sheet]['X'])
-    wslp101Worksheet.write_column(row=current, col=1, data=wslp101OutputDataFrames[wslp101Sheet]['Y'])
-    wslp101Worksheet.write_column(row=current, col=2, data=wslp101OutputDataFrames[wslp101Sheet]['I/O'])
-    current += len(wslp101OutputDataFrames[wslp101Sheet])
-
-current = 1
-
-for wslp108Sheet in wslp108OutputDataFrames:
-    wslp108Worksheet.write_column(row=current, col=0, data=wslp108OutputDataFrames[wslp108Sheet]['X'])
-    wslp108Worksheet.write_column(row=current, col=1, data=wslp108OutputDataFrames[wslp108Sheet]['Y'])
-    wslp108Worksheet.write_column(row=current, col=2, data=wslp108OutputDataFrames[wslp108Sheet]['I/O'])
-    current += len(wslp108OutputDataFrames[wslp108Sheet])
-
-current = 1
-
-for wslp109Sheet in wslp109OutputDataFrames:
-    wslp109Worksheet.write_column(row=current, col=0, data=wslp109OutputDataFrames[wslp109Sheet]['X'])
-    wslp109Worksheet.write_column(row=current, col=1, data=wslp109OutputDataFrames[wslp109Sheet]['Y'])
-    wslp109Worksheet.write_column(row=current, col=2, data=wslp109OutputDataFrames[wslp109Sheet]['I/O'])
-    current += len(wslp109OutputDataFrames[wslp109Sheet])
-
-
-scatterPlot = wslp101Worksheet = workbook.add_chart({'type': 'scatter', })
-workbook.close()
-'''''
-'''''
