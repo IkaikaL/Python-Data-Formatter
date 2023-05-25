@@ -14,6 +14,7 @@ class DeleteNans:
         self.elevationDataFrame = elevationDataFrame
         self.output = output
 
+    '''''
     def removenansprec(self):
         nanValueIndexes = self.valuesDataFrame[pd.isna(self.valuesDataFrame['prec'])]
         if not nanValueIndexes.empty:
@@ -22,6 +23,8 @@ class DeleteNans:
                 self.elevationDataFrame = self.elevationDataFrame.drop(labels=indexes, axis=0)
 
         return self.valuesDataFrame, self.elevationDataFrame
+
+    '''''
 
     def removenansrf(self):
         nanValueIndexes = self.valuesDataFrame[pd.isna(self.valuesDataFrame['Rf'])]
@@ -94,10 +97,10 @@ class wslpVersionFormatting:
     def formatValuesA(self):
         for value in self.wslpSheet.keys():
             # Get values from every sheet in WSLP-101 using headers
-            individualSheet = self.wslpSheet[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "s 'p"]]
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf']]
 
             # Rename columns to be uniform
-            individualSheet = individualSheet.rename(columns={"s 'p": "prec"})
+            #individualSheet = individualSheet.rename(columns={"s 'p": "prec"})
 
             individualSheetUnits = individualSheet.head(1)
             individualSheet = individualSheet.iloc[1:]
@@ -113,6 +116,7 @@ class wslpVersionFormatting:
             elevation.reset_index(drop=True, inplace=True)
             self.wslpElevationDataFrame[value] = elevation
 
+            '''''
             # Remove any NaN values before formatting
             modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
                                             elevationDataFrame=self.wslpElevationDataFrame[value])
@@ -120,6 +124,7 @@ class wslpVersionFormatting:
             self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
 
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+            '''''
 
             # Format Numbers
             self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="A", units=individualSheetUnits)
@@ -140,11 +145,11 @@ class wslpVersionFormatting:
     def formatValuesB(self):
         for value in self.wslpSheet.keys():
             # Get values from every sheet in WSLP-101 using headers
-            individualSheet = self.wslpSheet[value].loc[:, ["Depth", "q_c", "fs", "Pw", "q_t", "Rf", "Total Stress"]]
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth", "q_c", "fs", "Pw", "q_t", "Rf"]]
 
             # Rename columns to be uniform
             individualSheet = individualSheet.rename(
-                columns={"Depth": "Depth ", "q_c": "qc", "Pw": "u2", "q_t": "qt/pa", "Total Stress": "prec"})
+                columns={"Depth": "Depth ", "q_c": "qc", "Pw": "u2", "q_t": "qt/pa"})
 
             # extracting units
             individualSheetUnits = individualSheet.head(1)
@@ -161,12 +166,14 @@ class wslpVersionFormatting:
             elevation.reset_index(drop=True, inplace=True)
             self.wslpElevationDataFrame[value] = elevation
 
+            '''''
             # Remove any NaN values before formatting
             modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
                                             elevationDataFrame=self.wslpElevationDataFrame[value])
             modifiedDataFrames.removenansprec()
             self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+            '''''
 
             # Format Numbers
             self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="B", units=individualSheetUnits)
@@ -187,10 +194,10 @@ class wslpVersionFormatting:
     def formatValuesC(self):
         for value in self.wslpSheet.keys():
             # Get values from every sheet in WSLP-101 using headers
-            individualSheet = self.wslpSheet[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf', "sp"]]
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth ", "qc", 'fs', 'u2', 'qt/pa', 'Rf']]
 
             # Rename columns to be uniform
-            individualSheet = individualSheet.rename(columns={"sp": "prec"})
+            #individualSheet = individualSheet.rename(columns={"sp": "prec"})
 
             # extracting units
             individualSheetUnits = individualSheet.head(1)
@@ -207,12 +214,14 @@ class wslpVersionFormatting:
             elevation.reset_index(drop=True, inplace=True)
             self.wslpElevationDataFrame[value] = elevation
 
+            '''''
             # Remove any NaN values before formatting
             modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
                                             elevationDataFrame=self.wslpElevationDataFrame[value])
             modifiedDataFrames.removenansprec()
             self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
+            '''''
 
             # Format Numbers
             self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="C", units=individualSheetUnits)
@@ -233,10 +242,10 @@ class wslpVersionFormatting:
     def formatValuesMau3(self):
         for value in self.wslpSheet.keys():
             # Get values from every sheet in WSLP-101 using headers
-            individualSheet = self.wslpSheet[value].loc[:, ["Depth .1", "qc.1", 'fs.1', 'u2.1', 'qt/pa', 'Rf', "s 'p"]]
+            individualSheet = self.wslpSheet[value].loc[:, ["Depth .1", "qc.1", 'fs.1', 'u2.1', 'qt/pa', 'Rf']]
 
             # Rename columns to be uniform
-            individualSheet = individualSheet.rename(columns={"Depth .1" : "Depth ", "qc.1": "qc", "fs.1": "fs", "u2.1": "u2", "s 'p": "prec"})
+            individualSheet = individualSheet.rename(columns={"Depth .1" : "Depth ", "qc.1": "qc", "fs.1": "fs", "u2.1": "u2"})
 
             individualSheetUnits = individualSheet.head(1)
             individualSheet = individualSheet.iloc[1:]
@@ -252,15 +261,17 @@ class wslpVersionFormatting:
             elevation.reset_index(drop=True, inplace=True)
             self.wslpElevationDataFrame[value] = elevation
 
+            '''''
             # Remove any NaN values before formatting
             modifiedDataFrames = DeleteNans(valuesDataFrame=self.wslpDataFrame[value],
                                             elevationDataFrame=self.wslpElevationDataFrame[value])
             modifiedDataFrames.removenansprec()
+            
 
             self.wslpDataFrame[value] = modifiedDataFrames.valuesDataFrame
 
             self.wslpElevationDataFrame[value] = modifiedDataFrames.elevationDataFrame
-
+            '''''
             # Format Numbers
             self.wslpDataFrame[value] = wslpVersionFormatting.convertUnits(self=self, dataSheet=self.wslpDataFrame[value], version="A", units=individualSheetUnits)
 
@@ -293,15 +304,15 @@ class wslpVersionFormatting:
         elif version == "B":
             dataSheet = dataSheet.astype(float)
             for index, value in enumerate(units.iloc[0].values):
-                if value == "(tsf)":
+                if value == "(tsf)" and index != 4:
                     dataSheet.iloc[:, [index]] *= 2000
 
                 elif value == "(psi)":
                     dataSheet.iloc[:, [index]] *= 144
-
             dataSheet.loc[:, ['qt/pa']] /= 1.0581
             dataSheet['qt/pa'] = np.log10(dataSheet['qt/pa'])
             dataSheet['Rf'] = np.log10(dataSheet['Rf'])
+
         elif version == "C":
             dataSheet = dataSheet.astype(float)
             for index, value in enumerate(units.iloc[0].values):
@@ -329,7 +340,7 @@ class wslpVersionFormatting:
 data = pd.read_excel('wslp_f29.xlsx', sheet_name=0)
 
 
-X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology', 'prec']]  # 8 feature columns
+X = data.loc[:, ['Depth ', 'qc', 'fs', 'u2', 'qt/pa', 'Rf', 'geology']]  # 8 feature columns
 Y = data.loc[:, ['organic']]  # Output column
 m = len(Y)
 
@@ -511,6 +522,7 @@ wslpMau3ElevationDataFrames = {}
 # Format file based on type
 formattedWslpsMau3 = wslpVersionFormatting(wslpSheet=wslpMau3, wslpDataFrame=wslpMau3DataFrames, wslpElevationDataFrame=wslpMau3ElevationDataFrames)
 formattedWslpsMau3.formatValuesMau3()
+
 
 # Find length of all data sets
 dataLengthWslp101 = len(wslp101DataFrames[list(wslp101DataFrames.keys())[0]])
