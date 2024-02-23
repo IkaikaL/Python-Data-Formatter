@@ -1,1 +1,1 @@
-# Python data formatter that format extracts data imported from excel sheets made by instruments used by environmental engineers then using the data and machine learning the program tries to predict pockets of organic material in the soil levels
+# Python program to extract data from excel sheets collected along the coastal areas of the Gulf of Mexico then using the data and machine learning the program tries to predict pockets of organic and inorganic material in the soil levels to test vulnerability to erosion
